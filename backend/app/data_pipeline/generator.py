@@ -50,6 +50,11 @@ def generate_spatial_grid(target_date: date, latitude: float = None, longitude: 
     # Simple pseudo-random seed based on date to ensure consistency for queries on the same day
     random.seed(int(target_date.strftime("%Y%m%d")))
     
+    if not isinstance(latitude, (int, float)):
+        latitude = None
+    if not isinstance(longitude, (int, float)):
+        longitude = None
+        
     if latitude is not None and longitude is not None:
         grid_cells = []
         cell_id = 1
