@@ -96,3 +96,5 @@ prometheus_data/
 
 # Build caching
 *.tsbuildinfo
+
+.vercel
