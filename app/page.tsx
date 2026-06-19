@@ -217,6 +217,31 @@ export default function GlobalPlatform() {
 
   const PIE_COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#6b7280']
 
+  // ── Live WebSockets Alert Feed ──────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    // Connect to FastAPI background notification channel
+    const socket = new WebSocket(`${wsProtocol}//localhost:8000/api/v1/ws/alerts`)
+
+    socket.onopen = () => {
+      console.log('Successfully connected to ATMOS-WATCH Live Alert websocket channel.')
+    }
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'alert') {
+          console.log('🚨 Live Alert Received:', data.message)
+        }
+      } catch (e) {
+        console.error('Failed to parse incoming WS alert data:', e)
+      }
+    }
+    return () => {
+      socket.close()
+    }
+  }, [])
+
   // ── Leaflet Map Initialization ─────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined' || tab !== 'map') return
