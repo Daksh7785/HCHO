@@ -3,7 +3,7 @@ import math
 import numpy as np
 from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Query, HTTPException, status
+from fastapi import FastAPI, Query, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -646,3 +646,42 @@ async def get_validation_report(date_str: str = "2026-11-10"):
             
     report = run_full_validation_suite(station_predictions)
     return report
+
+
+# ── LIVE WEBSOCKETS ALERTS STREAM ─────────────────────────────────────────────
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
+manager = ConnectionManager()
+
+@app.websocket("/api/v1/ws/alerts")
+async def websocket_alerts_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        # Send live welcome payload
+        await websocket.send_json({
+            "type": "welcome",
+            "message": "Connected to ATMOS-WATCH Enterprise Live Alert stream.",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        while True:
+            # Maintain heartbeat/keepalive
+            data = await websocket.receive_text()
+            await websocket.send_json({"type": "pong", "payload": data})
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
